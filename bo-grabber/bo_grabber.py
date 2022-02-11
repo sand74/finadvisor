@@ -13,7 +13,7 @@ import time
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 
@@ -70,7 +70,7 @@ def get_buh_page(driver: webdriver.Chrome, inn: str) -> None:
 
     # Find inn input field
     WebDriverWait(driver, 5).until(
-        EC.presence_of_element_located((By.CLASS_NAME, 'input-search'))
+        ec.presence_of_element_located((By.CLASS_NAME, 'input-search'))
     )
 
     input_form = driver.find_element(By.CLASS_NAME, 'input-search')
@@ -82,7 +82,7 @@ def get_buh_page(driver: webdriver.Chrome, inn: str) -> None:
 
     # Find result report link
     WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.CLASS_NAME, 'results-search-content'))
+        ec.presence_of_element_located((By.CLASS_NAME, 'results-search-content'))
     )
 
     driver.execute_script("""
@@ -98,7 +98,7 @@ def get_buh_page(driver: webdriver.Chrome, inn: str) -> None:
     result_link[0].click()
 
     WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.CLASS_NAME, 'download-reports-wrapper'))
+        ec.presence_of_element_located((By.CLASS_NAME, 'download-reports-wrapper'))
     )
 
     download_wrapper = driver.find_element(By.CLASS_NAME, 'download-reports-wrapper')
@@ -119,10 +119,10 @@ def get_buh_page(driver: webdriver.Chrome, inn: str) -> None:
     button_md.click()
 
 
-def open_chrom() -> webdriver.Chrome:
+def open_chrom(download_folder: str = None) -> webdriver.Chrome:
     # Open chrome
     chrome_options = webdriver.ChromeOptions()
-    prefs = {"download.default_directory": OUTPUT_DIR}
+    prefs = {"download.default_directory": download_folder}
     chrome_options.add_experimental_option("prefs", prefs)
     driver = webdriver.Chrome(ChromeDriverManager().install(), options=chrome_options)
     return driver
@@ -136,16 +136,19 @@ def close_chrom(driver: webdriver.Chrome) -> None:
 
 def main(argv):
     args = parse_args(argv)
-    OUTPUT_DIR = args.folder
-    if len(OUTPUT_DIR) == 0 or OUTPUT_DIR[0] != '/':
-        OUTPUT_DIR = os.path.dirname(os.path.realpath(__file__)) + '/' + OUTPUT_DIR
-    WAIT_IVAL = args.wait
+    folder = args.folder.strip()
+    if folder is None or len(folder) == 0:
+        folder = os.path.dirname(os.path.realpath(__file__))
+    elif folder[0] != '/':
+        folder = os.path.dirname(os.path.realpath(__file__)) + '/' + folder
+
+    wait_ival = args.wait
 
     # Если выходной папки нет - создать
-    if not os.path.exists(OUTPUT_DIR):
-        os.makedirs(OUTPUT_DIR)
+    if not os.path.exists(folder):
+        os.makedirs(folder)
 
-    driver = open_chrom()
+    driver = open_chrom(folder)
 
     # While not eof read inns from stdin
     for line in sys.stdin:
@@ -159,7 +162,7 @@ def main(argv):
             except Exception as ex:
                 print('fail')
                 logger.warning(f'{inn} exception {str(ex)}')
-        time.sleep(WAIT_IVAL)
+        time.sleep(wait_ival)
 
     close_chrom(driver)
 
