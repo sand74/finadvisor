@@ -149,14 +149,16 @@ def main(argv):
 
     # While not eof read inns from stdin
     for line in sys.stdin:
-        inn = line.strip()
-        try:
-            print(f'{inn}', end='\t')
-            get_buh_page(driver, inn)
-            print('success')
-        except Exception as e:
-            print('fail')
-            logger.warning(f'{inn} exception {str(e)}')
+        inns = line.strip().split(' ')
+        if inns is not None and len(inns) > 0:
+            inn = inns[0]
+            try:
+                print(f'{inn}', end='\t')
+                get_buh_page(driver, inn)
+                print('success')
+            except Exception as e:
+                print('fail')
+                logger.warning(f'{inn} exception {str(e)}')
         time.sleep(WAIT_IVAL)
 
     close_chrom(driver)
