@@ -59,12 +59,12 @@ def parse_args(argv):
 
 
 def get_buh_page(driver: webdriver.Chrome, inn: str) -> None:
-    '''
+    """
     Получение страницы бух отчетности по ИНН
     :param driver: chrome driver
     :param inn: ИНН
     :return: None
-    '''
+    """
     # Load base page
     driver.get(BASE_URL)
 
@@ -156,9 +156,9 @@ def main(argv):
                 print(f'{inn}', end='\t')
                 get_buh_page(driver, inn)
                 print('success')
-            except Exception as e:
+            except Exception as ex:
                 print('fail')
-                logger.warning(f'{inn} exception {str(e)}')
+                logger.warning(f'{inn} exception {str(ex)}')
         time.sleep(WAIT_IVAL)
 
     close_chrom(driver)
@@ -171,41 +171,37 @@ TEST_INNS = ['1435338862', '7801683256']
 
 def test01():
     # Test for open chroe
-    try:
-        assert open_chrom() != None
-    except:
-        assert False
+    assert open_chrom() is not None
 
 
 def test02():
     # Test get one inn
-    try:
-        driver = open_chrom()
-        get_buh_page(driver, test_inns[0])
-        close_chrom(driver)
-        assert True
-    except:
-        assert False
+    driver = open_chrom()
+    get_buh_page(driver, TEST_INNS[0])
+    close_chrom(driver)
 
 
 def test03():
     # Test get inns list
-    try:
-        driver = open_chrom()
-        for inn in TEST_INNS:
-            get_buh_page(driver, inn)
-        close_chrom(driver)
-        assert True
-    except:
-        assert False
+    driver = open_chrom()
+    for inn in TEST_INNS:
+        get_buh_page(driver, inn)
+    close_chrom(driver)
 
 
 def test():
-    test01()
-    test02()
-    test03()
+    try:
+        logger.info('Run tests...')
+        test01()
+        test02()
+        test03()
+        logger.info('...complete.')
+    except Exception as ex:
+        logger.exception(ex)
 
 
+if 'DEBUG' in os.environ:
+    test()
 #####################################################################
 
 if __name__ == '__main__':
@@ -213,5 +209,3 @@ if __name__ == '__main__':
         main(sys.argv)
     except Exception as e:
         logger.error(f'Exception {str(e)}')
-else:
-    test()
