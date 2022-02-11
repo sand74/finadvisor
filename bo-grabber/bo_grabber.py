@@ -1,28 +1,60 @@
-import sys
-from selenium import webdriver
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.by import By
+#!/usr/bin/env python3
+#  Скрипт для скачивания информации с bo.nalog.ru
+#  Использование: bo_grabber.py [-w  интервал запросов] [папка для сохранения результатов]
+#  Ввод из stdout последовательность ИНН
+#  Вывод - формат ИНН   результат
+#  Скаченные архивы сохраняются в указанную папку или в текущий дипекторий если она не указана
 
-import os
-import time
 import argparse
+import logging.config
+import os
+import sys
+import time
+
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
+from webdriver_manager.chrome import ChromeDriverManager
+
+LOGGING_CONFIG = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "default": {"format": "%(asctime)s %(name)-12s %(levelname)-8s %(message)s"},
+    },
+    "handlers": {
+        "file_handler": {
+            "level": "INFO",
+            "formatter": "default",
+            "class": "logging.FileHandler",
+            "filename": 'grabber.log',
+            "mode": "a",
+        },
+    },
+    "loggers": {
+        "": {"handlers": ["file_handler"], "level": "INFO", "propagate": False},
+    },
+}
+logging.config.dictConfig(LOGGING_CONFIG)
+logger = logging.getLogger(__name__)
 
 BASE_URL = "https://bo.nalog.ru/"
-OUTPUT_DIR = '/Users/sand/DataspellProjects/finadvisor_git/data/bo.nalog.ru/'
+OUTPUT_DIR = ''
 WAIT_IVAL = 5
+
 
 def parse_args(argv):
     """
     Parse command-line args.
     """
     parser = argparse.ArgumentParser(
-        prog = 'bo_grabber',
-        formatter_class = argparse.MetavarTypeHelpFormatter)
-    parser.add_argument('--out', metavar='OUTPUT_DIR', type=str, nargs=1, help='Output folder for inns')
-    parser.add_argument('--wait', metavar='WAIT_IVAL', type=int, nargs='?', help='Wait interval between queries')
-    print(parser.parse_args('X -- Y'.split()))
+        prog='bo_grabber',
+        formatter_class=argparse.MetavarTypeHelpFormatter)
+    parser.add_argument('folder', metavar='OUTPUT_DIR', type=str, nargs='?', default='',
+                        help='Output folder for inns')
+    parser.add_argument('-w', '--wait', metavar='WAIT_IVAL', type=int, nargs='?', default=5,
+                        help='Wait interval between queries')
     return parser.parse_args(argv[1:])
 
 
@@ -87,44 +119,97 @@ def get_buh_page(driver: webdriver.Chrome, inn: str) -> None:
     button_md.click()
 
 
-def main(argv):
-    # inns = ['1435338862', '7801683256']
-    args = parse_args(argv)
-
-    print(OUTPUT_DIR)
-
+def open_chrom() -> webdriver.Chrome:
     # Open chrome
     chrome_options = webdriver.ChromeOptions()
     prefs = {"download.default_directory": OUTPUT_DIR}
     chrome_options.add_experimental_option("prefs", prefs)
     driver = webdriver.Chrome(ChromeDriverManager().install(), options=chrome_options)
+    return driver
 
-    # Если выходной папки нет - создать
-    if not os.path.exists(OUTPUT_DIR):
-        os.makedirs(OUTPUT_DIR)
 
-    # While not eof read inns from stdin
-    for line in sys.stdin:
-        inn = line.strip()
-        try:
-            print(f'{inn}\t', end='')
-            get_buh_page(driver, inn)
-            print('success')
-        except Exception as e:
-            print('fail', file=sys.stdout)
-            print(f'{inn} exception {str(e)}', file=sys.stderr)
-        time.sleep(WAIT_IVAL)
-
+def close_chrom(driver: webdriver.Chrome) -> None:
     # Close Chrome
     driver.close()
     driver.quit()
 
 
-# Press the green button in the gutter to run the script.
+def main(argv):
+    args = parse_args(argv)
+    OUTPUT_DIR = args.folder
+    if len(OUTPUT_DIR) == 0 or OUTPUT_DIR[0] != '/':
+        OUTPUT_DIR = os.path.dirname(os.path.realpath(__file__)) + '/' + OUTPUT_DIR
+    WAIT_IVAL = args.wait
+
+    # Если выходной папки нет - создать
+    if not os.path.exists(OUTPUT_DIR):
+        os.makedirs(OUTPUT_DIR)
+
+    driver = open_chrom()
+
+    # While not eof read inns from stdin
+    for line in sys.stdin:
+        inn = line.strip()
+        try:
+            print(f'{inn}', end='\t')
+            get_buh_page(driver, inn)
+            print('success')
+        except Exception as e:
+            print('fail')
+            logger.warning(f'{inn} exception {str(e)}')
+        time.sleep(WAIT_IVAL)
+
+    close_chrom(driver)
+
+
+#####################################################################
+# Testing block (in order to do not install framework - use assert)
+TEST_INNS = ['1435338862', '7801683256']
+
+
+def test01():
+    # Test for open chroe
+    try:
+        assert open_chrom() != None
+    except:
+        assert False
+
+
+def test02():
+    # Test get one inn
+    try:
+        driver = open_chrom()
+        get_buh_page(driver, test_inns[0])
+        close_chrom(driver)
+        assert True
+    except:
+        assert False
+
+
+def test03():
+    # Test get inns list
+    try:
+        driver = open_chrom()
+        for inn in TEST_INNS:
+            get_buh_page(driver, inn)
+        close_chrom(driver)
+        assert True
+    except:
+        assert False
+
+
+def test():
+    test01()
+    test02()
+    test03()
+
+
+#####################################################################
+
 if __name__ == '__main__':
     try:
         main(sys.argv)
     except Exception as e:
-        print('Exception:', e)
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+        logger.error(f'Exception {str(e)}')
+else:
+    test()
