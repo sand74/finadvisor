@@ -120,7 +120,7 @@ def get_buh_page(driver: webdriver.Chrome, inn: str) -> None:
     button_md.click()
 
 
-def open_chrom(download_folder: str = None) -> webdriver.Chrome:
+def open_chrome(download_folder: str = None) -> webdriver.Chrome:
     # Open chrome
     chrome_options = webdriver.ChromeOptions()
     prefs = {"download.default_directory": download_folder}
@@ -150,7 +150,7 @@ def main(argv):
     if not os.path.exists(folder):
         os.makedirs(folder)
 
-    driver = open_chrom(folder)
+    driver = open_chrome(folder)
 
     # While not eof read inns from stdin
     for line in sys.stdin:
@@ -174,39 +174,39 @@ def main(argv):
 TEST_INNS = ['1435338862', '7801683256']
 
 
-def test01():
+def _test_open_chrome():
     # Test for open chroe
-    assert open_chrom() is not None
+    assert open_chrome() is not None
 
 
-def test02():
+def _test_one_inn():
     # Test get one inn
-    driver = open_chrom()
+    driver = open_chrome()
     get_buh_page(driver, TEST_INNS[0])
     close_chrom(driver)
 
 
-def test03():
+def _test_inn_list():
     # Test get inns list
-    driver = open_chrom()
+    driver = open_chrome()
     for inn in TEST_INNS:
         get_buh_page(driver, inn)
     close_chrom(driver)
 
 
-def test():
+def _test():
     try:
         logger.info('Run tests...')
-        test01()
-        test02()
-        test03()
+        _test_open_chrome()
+        _test_one_inn()
+        _test_inn_list()
         logger.info('...complete.')
     except Exception as ex:
         logger.exception(ex)
 
 
 if 'DEBUG' in os.environ:
-    test()
+    _test()
 #####################################################################
 
 if __name__ == '__main__':
