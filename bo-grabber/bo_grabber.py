@@ -129,7 +129,7 @@ def open_chrome(download_folder: str = None) -> webdriver.Chrome:
     return driver
 
 
-def close_chrom(driver: webdriver.Chrome) -> None:
+def close_chrome(driver: webdriver.Chrome) -> None:
     # Close Chrome
     driver.close()
     driver.quit()
@@ -166,7 +166,7 @@ def main(argv):
                 logger.warning(f'{inn} exception {str(ex)}')
         time.sleep(wait_ival)
 
-    close_chrom(driver)
+    close_chrome(driver)
 
 
 #####################################################################
@@ -183,7 +183,7 @@ def _test_one_inn():
     # Test get one inn
     driver = open_chrome()
     get_buh_page(driver, TEST_INNS[0])
-    close_chrom(driver)
+    close_chrome(driver)
 
 
 def _test_inn_list():
@@ -191,7 +191,7 @@ def _test_inn_list():
     driver = open_chrome()
     for inn in TEST_INNS:
         get_buh_page(driver, inn)
-    close_chrom(driver)
+    close_chrome(driver)
 
 
 def _test():
