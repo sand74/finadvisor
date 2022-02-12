@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 #  Скрипт для скачивания информации с bo.nalog.ru
-#  Использование: bo_grabber.py [-w  интервал запросов] [папка для сохранения результатов]
-#  Ввод из stdout последовательность ИНН
-#  Вывод - формат ИНН   результат
+#  Ввод из stdin последовательность строк - первое поле ИНН
+#  Вывод в stdout - формат ИНН   результат
 #  Скаченные архивы сохраняются в указанную папку или в текущий дипекторий если она не указана
 
 import argparse
@@ -55,6 +54,8 @@ def parse_args(argv):
                         help='Output folder for inns')
     parser.add_argument('-w', '--wait', metavar='WAIT_IVAL', type=int, nargs='?', default=5,
                         help='Wait interval between queries')
+    parser.add_argument('-s', '--sep', metavar='SEPARATOR', type=str, nargs='?', default=' ',
+                        help='Input line separator')
     return parser.parse_args(argv[1:])
 
 
@@ -143,6 +144,7 @@ def main(argv):
         folder = os.path.dirname(os.path.realpath(__file__)) + '/' + folder
 
     wait_ival = args.wait
+    separator = args.sep
 
     # Если выходной папки нет - создать
     if not os.path.exists(folder):
@@ -152,7 +154,7 @@ def main(argv):
 
     # While not eof read inns from stdin
     for line in sys.stdin:
-        inns = line.strip().split(' ')
+        inns = line.strip().split(separator)
         if inns is not None and len(inns) > 0:
             inn = inns[0]
             try:
