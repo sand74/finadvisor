@@ -9,6 +9,7 @@ import logging.config
 import os
 import sys
 import time
+import pandas as pd
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -56,16 +57,23 @@ def parse_args(argv):
                         help='Wait interval between queries')
     parser.add_argument('-s', '--sep', metavar='SEPARATOR', type=str, nargs='?', default=' ',
                         help='Input line separator')
+    parser.add_argument('-y', '--year', metavar='YEAR', type=str, nargs='?', default=None,
+                        help='Downoload this year else last year')
+    parser.add_argument('--noxls', default=False, action='store_true',
+                         help='Skip xls file')
+    logger.info(f'Args: {parser.parse_args(argv[1:])}')
     return parser.parse_args(argv[1:])
 
 
-def get_buh_page(driver: webdriver.Chrome, inn: str) -> None:
+def get_buh_page(driver: webdriver.Chrome, inn: str, load_xls: bool=True, year: str=None) -> dict:
     """
     Получение страницы бух отчетности по ИНН
     :param driver: chrome driver
     :param inn: ИНН
     :return: None
     """
+    info = {'inn': inn}
+
     # Load base page
     driver.get(BASE_URL)
 
@@ -99,26 +107,45 @@ def get_buh_page(driver: webdriver.Chrome, inn: str) -> None:
     result_link[0].click()
 
     WebDriverWait(driver, 10).until(
-        ec.presence_of_element_located((By.CLASS_NAME, 'download-reports-wrapper'))
+        ec.presence_of_element_located((By.CLASS_NAME, 'header-card-content-date'))
     )
 
-    download_wrapper = driver.find_element(By.CLASS_NAME, 'download-reports-wrapper')
-    button_link = download_wrapper.find_element(By.TAG_NAME, 'button')
-    button_link.click()
+    create_header = driver.find_element(By.CLASS_NAME, 'header-card-content-date')
+    create_date = create_header.find_element(By.TAG_NAME, 'p')
+    info['create_date'] = create_date.text
 
-    download_wrapper_report = download_wrapper.find_element(By.CLASS_NAME, 'download-reports')
-    # Wait for modal is showing
-    time.sleep(1)
+    if load_xls:
+        WebDriverWait(driver, 10).until(
+            ec.presence_of_element_located((By.CLASS_NAME, 'download-reports-wrapper'))
+        )
 
-    download_wrapper_buttons = download_wrapper_report.find_element(By.CLASS_NAME, 'download-reports-buttons')
-    if download_wrapper_buttons is not None:
-        button_link = download_wrapper_buttons.find_element(By.CLASS_NAME, 'button_link')
-        if button_link is not None:
-            button_link.click()
+        download_wrapper = driver.find_element(By.CLASS_NAME, 'download-reports-wrapper')
+        button_link = download_wrapper.find_element(By.TAG_NAME, 'button')
+        button_link.click()
 
-    button_md = download_wrapper_report.find_element(By.CLASS_NAME, 'button_md')
-    button_md.click()
+        download_wrapper_report = download_wrapper.find_element(By.CLASS_NAME, 'download-reports')
+        # Wait for modal is showing
+        time.sleep(1)
 
+        download_years = download_wrapper.find_elements(By.CLASS_NAME, 'button_xs')
+        is_year_exists = False
+        if year is not None:
+            for y in download_years:
+                if year == y.text:
+                    is_year_exists = True
+                    y.click()
+                    break
+        if year is None or is_year_exists:
+            download_wrapper_buttons = download_wrapper_report.find_element(By.CLASS_NAME, 'download-reports-buttons')
+            if download_wrapper_buttons is not None:
+                button_link = download_wrapper_buttons.find_element(By.CLASS_NAME, 'button_link')
+                if button_link is not None:
+                    button_link.click()
+
+            button_md = download_wrapper_report.find_element(By.CLASS_NAME, 'button_md')
+            button_md.click()
+
+    return info
 
 def open_chrome(download_folder: str = None) -> webdriver.Chrome:
     # Open chrome
@@ -145,6 +172,8 @@ def main(argv):
 
     wait_ival = args.wait
     separator = args.sep
+    noxls = args.noxls
+    year = args.year
 
     # Если выходной папки нет - создать
     if not os.path.exists(folder):
@@ -152,6 +181,7 @@ def main(argv):
 
     driver = open_chrome(folder)
 
+    org_info_list = []
     # While not eof read inns from stdin
     for line in sys.stdin:
         inns = line.strip().split(separator)
@@ -159,19 +189,21 @@ def main(argv):
             inn = inns[0]
             try:
                 print(f'{inn}', end='\t')
-                get_buh_page(driver, inn)
+                info = get_buh_page(driver, inn, not noxls, year)
+                org_info_list.append(info)
                 print('success')
             except Exception as ex:
                 print('fail')
                 logger.warning(f'{inn} exception {str(ex)}')
         time.sleep(wait_ival)
 
+    pd.json_normalize(org_info_list).to_csv(f'{folder}_info.csv')
     close_chrome(driver)
 
 
 #####################################################################
 # Testing block (in order to do not install framework - use assert)
-TEST_INNS = ['1435338862', '7801683256']
+TEST_INNS = ['0101009465', '0105030411']
 
 
 def _test_open_chrome():
